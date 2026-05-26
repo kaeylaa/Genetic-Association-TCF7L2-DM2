@@ -1,0 +1,123 @@
+/* =========================
+   TEMA DIABETES MILITUS
+   Dominan Kuning + Aksen Medical Teal
+========================= */
+body {
+  background: linear-gradient(
+    to bottom,
+    #fffdf7 0%,
+    #fff4c7 25%,
+    #ffe082 65%,
+    #f6c453 100%
+  );
+  color: #2f2f2f;
+  font-family: "Times New Roman", serif;
+  line-height: 1.6;
+}
+
+/* =========================
+   KOTAK OUTPUT CODE
+========================= */
+pre {
+  background: #fffaf0;
+  border-left: 6px solid #3aa6b9;
+  border-top: 1px solid #f4c95d;
+  border-right: 1px solid #f4c95d;
+  border-bottom: 1px solid #f4c95d;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  font-size: 14px;
+  overflow-x: auto;
+}
+
+/* =========================
+   TABEL OUTPUT
+========================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fffdf8;
+  border: 2px solid #3aa6b9;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(58, 166, 185, 0.2);
+  margin-top: 6px;
+}
+table th {
+  background: #3aa6b9;        /* teal lebih tegas, bukan kuning */
+  color: #ffffff;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 0.95em;
+  letter-spacing: 0.03em;
+  border: 1px solid #2e8fa0;
+}
+table td {
+  padding: 10px 14px;
+  border: 1px solid #d4eef2;
+  font-size: 0.93em;
+  color: #2f2f2f;
+}
+table tr:nth-child(even) { background: #eef9fb; }
+table tr:hover {
+  background: #c8edf3;
+  transition: background 0.25s ease;
+}
+
+/* =========================
+   CAPTION TABEL
+========================= */
+caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: bold;
+  font-size: 0.95em;
+  color: #ffffff;             /* putih supaya kontras */
+  background-color: #2b8a9e; /* teal gelap */
+  padding: 8px 14px;
+  border-radius: 8px 8px 0 0;
+  letter-spacing: 0.02em;
+}
+
+/* =========================
+   HEADING BAB (#)
+   → tengah, dua baris (BAB N / JUDUL), font lebih kecil
+========================= */
+h1 {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #4e342e;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+/* =========================
+   SUB-BAB (## dan ###)
+========================= */
+h2 {
+  text-align: left;
+  font-weight: bold;
+  font-size: 1.0em;
+  color: #4e342e;
+}
+h3 {
+  text-align: left;
+  font-weight: bold;
+  font-size: 0.95em;
+  color: #4e342e;
+}
+
+/* =========================
+   PARAGRAF & LIST
+========================= */
+p  { text-align: justify; }
+li { text-align: justify; }
+
+/* =========================
+   LINK
+========================= */
+a       { color: #2b8a9e; }
+a:hover { color: #1f6c7c; }

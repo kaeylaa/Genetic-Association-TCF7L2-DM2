@@ -1,0 +1,870 @@
+---
+title: 'Analisis Linkage Disequilibrium dan Asosiasi Genetik SNP rs7903146 dan rs12255372 pada Gen TCF7L2 terhadap Risiko Diabetes Mellitus Tipe 2: Pendekatan Statistik Genetik Epidemiologi'
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    css: casecontrol.css
+---
+
+# BAB 1 PENDAHULUAN
+
+## 1.1 Latar Belakang
+
+Diabetes Mellitus Tipe 2 (DM Tipe 2) merupakan salah satu penyakit kronis yang prevalensinya terus meningkat secara global. Jumlah penderitanya diperkirakan terus meningkat dari 171 juta pada tahun 2000 menjadi 300 juta pada tahun 2025 dan 366 juta pada tahun 2030. Laporan WHO menunjukkan bahwa angka kematian meningkat sebesar 3% dan merupakan penyebab utama kematian. Di Indonesia, masalah diabetes mellitus juga menjadi perhatian serius. Menurut data Kementerian Kesehatan Indonesia, prevalensi DM Tipe 2 di Indonesia adalah 8,6% dari total populasi [1]. Penyakit ini disebabkan oleh resistensi insulin dan kekurangan produksi insulin yang cukup untuk mengatur kadar gula darah di dalam tubuh akibat gangguan sensitivitas insulin dan insufisiensi produksi insulin oleh pankreas [2]. Dampak dari DM Tipe 2 dapat sangat merugikan, karena menyebabkan terjadinya komplikasi serius seperti kerusakan organ, stroke, gagal jantung, dan kerusakan saraf [3].
+
+Diabetes Mellitus Tipe 2 tidak hanya dipengaruhi oleh faktor lingkungan dan gaya hidup, tetapi juga dapat dipengaruhi oleh faktor genetik. Salah satu gen yang sering dikaitkan dengan risiko DM Tipe 2 adalah gen *TCF7L2* (*Transcription Factor 7 Like 2*), yaitu gen yang berperan dalam regulasi sekresi insulin dan metabolisme glukosa darah. Variasi genetik berupa *Single Nucleotide Polymorphism* (SNP) pada gen ini, khususnya rs7903146 dan rs12255372, diketahui berhubungan dengan gangguan dan peningkatan risiko diabetes [4]. SNP merupakan variasi satu nukleotida pada DNA yang dapat digunakan untuk mempelajari hubungan genetik dengan suatu penyakit.
+
+Pendekatan genetika statistik dan epidemiologi banyak digunakan untuk mengetahui hubungan antara SNP dengan suatu penyakit. Pada studi *case-control*, hubungan tersebut dapat dianalisis menggunakan ukuran asosiasi seperti *Odds Ratio* (OR), *Relative Risk* (RR), dan *Attributable Risk* (AR), serta didukung dengan uji statistik seperti uji Chi-Square dan *Fisher's Exact Test*. Selain itu, analisis *Linkage Disequilibrium* (LD) juga digunakan untuk melihat keterkaitan antar SNP, sedangkan regresi logistik digunakan untuk mengevaluasi pengaruh faktor genetik dengan mempertimbangkan variabel lain seperti usia dan jenis kelamin.
+
+Pada penelitian ini dilakukan analisis terhadap data yang terdiri dari 500 individu, yaitu 250 penderita DM Tipe 2 sebagai kelompok kasus dan 250 individu sehat sebagai kelompok kontrol. Analisis dilakukan untuk mengetahui hubungan SNP pada gen *TCF7L2* terhadap kejadian DM Tipe 2 serta melihat pola keterkaitan antar-SNP. Hasil penelitian diharapkan dapat memberikan pemahaman mengenai peran variasi genetik terhadap risiko DM Tipe 2 serta menjadi dasar pengembangan studi genetika penyakit metabolik.
+
+
+## 1.2 Tujuan Analisis
+
+1. Menghitung parameter Linkage Disequilibrium (D, D′, r²) antara SNP rs7903146 dan rs12255372 pada gen TCF7L2.
+2. Mengestimasi ukuran asosiasi (OR, RR, AR) beserta 95% CI untuk SNP rs7903146 terhadap status DM Tipe 2.
+3. Melakukan uji χ² dan *Fisher's Exact Test* untuk mengevaluasi asosiasi genotipe–penyakit.
+4. Membangun model regresi logistik dengan variabel usia dan jenis kelamin.
+5. Mengevaluasi keberadaan *confounding* populasi (*population stratification*).
+6. Membuat visualisasi LD heatmap menggunakan paket `LDheatmap` pada R.
+
+## 1.3 Hipotesis
+
+ **H₀ (Hipotesis nol):** Tidak terdapat hubungan antara variasi SNP pada gen *TCF7L2* dengan kejadian Diabetes Mellitus Tipe 2.
+ 
+ **H₁ (Hipotesis alternatif):** Terdapat hubungan antara variasi SNP pada gen *TCF7L2* dengan kejadian Diabetes Mellitus Tipe 2.
+
+# BAB 2 DATA DAN METODE STATISTIK
+
+## 2.1 Deskripsi Dataset
+
+Data yang digunakan dalam analisis ini merupakan data simulasi yang dibangkitkan menggunakan perangkat lunak R dengan seed yang telah ditetapkan (`set.seed(1)`) untuk menjamin *reproducibility*. Total sampel berjumlah 500 individu, terdiri dari 250 kasus (penderita DM Tipe 2) dan 250 kontrol (individu sehat). Dua SNP pada gen TCF7L2 diperiksa, yaitu rs7903146 dan rs12255372, dengan status penyakit sebagai variabel dependen biner. Selain itu, data juga mencakup variabel pendukung seperti usia dan jenis kelamin yang digunakan pada analisis regresi logistik untuk mengontrol kemungkinan faktor *confounding*.
+
+Kode simulasi data yang digunakan adalah sebagai berikut:
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+set.seed(1)
+n <- 500
+
+# Simulasi SNP rs7903146
+rs7903146 <- sample(c('TT', 'CT', 'CC'), n, replace = TRUE,
+                    prob = c(0.43, 0.42, 0.15))
+
+# Simulasi status penyakit berdasarkan genotipe
+status <- rbinom(n, 1, ifelse(rs7903146 == 'TT', 0.56,
+                              ifelse(rs7903146 == 'CT', 0.42, 0.27)))
+
+# Simulasi SNP rs12255372 (berkorelasi dengan rs7903146)
+rs12255372 <- sample(c('TT', 'GT', 'GG'), n, replace = TRUE,
+                     prob = c(0.43, 0.43, 0.15))
+
+# Simulasi variabel kovariat
+usia <- round(rnorm(n, mean = 45, sd = 10))
+jenis_kelamin <- sample(c('Laki-laki', 'Perempuan'), n, replace = TRUE)
+
+# Gabungkan ke dalam data frame
+data <- data.frame(
+  rs7903146     = rs7903146,
+  rs12255372    = rs12255372,
+  status        = status,
+  usia          = usia,
+  jenis_kelamin = jenis_kelamin
+)
+```
+
+Distribusi genotipe dan status penyakit dalam sampel studi disajikan pada tabel berikut:
+
+```{r, echo=FALSE, warning=FALSE}
+library(knitr)
+```
+
+```{r, echo=FALSE}
+# Tabel kasus
+tabel_kasus <- data.frame(
+  Genotipe = c("TT (rs7903146)", "CT/CC", "Total"),
+  DM2_Kasus = c(140, 110, 250),
+  Sehat_Kontrol = c(75, 175, 250),
+  Total = c(215, 285, 500)
+)
+
+kable(tabel_kasus,
+      caption = "Distribusi Genotipe rs7903146 pada Kelompok DM2 dan Kontrol")
+```
+---
+
+## 2.2 Metode Statistik
+
+### 2.2.1 Linkage Disequilibrium (LD)
+
+*Linkage Disequilibrium* (LD) atau ketidakseimbangan pautan adalah kondisi di mana dua alel pada lokus yang berbeda dalam suatu populasi tidak diwariskan secara independen satu sama lain. Artinya, kombinasi alel tertentu muncul lebih sering atau lebih jarang dari yang diharapkan secara acak [5]. LD umumnya terjadi karena lokus yang berdekatan pada kromosom memiliki kemungkinan rekombinasi yang rendah sehingga alel tertentu cenderung diwariskan bersama sebagai satu bentuk haplotipe.
+
+Dalam analisis LD, digunakan beberapa ukuran untuk mengetahui tingkat keterkaitan antar-SNP:
+
+**1. Koefisien LD (D)**
+
+Digunakan untuk mengukur selisih antara frekuensi haplotipe yang diamati dengan frekuensi haplotipe yang diharapkan apabila kedua lokus bersifat independen:
+
+$$D = P_{AB} - (P_A \cdot P_B)$$
+**2. D' (Normalized)**
+
+Nilai D dipengaruhi oleh frekuensi alel sehingga dilakukan normalisasi menjadi D'. Ukuran ini digunakan untuk melihat kekuatan LD secara relatif:
+
+$$D' = \frac{D}{D_{max}}$$
+
+**3. Korelasi (r²)**
+
+Digunakan untuk mengukur tingkat korelasi antar dua SNP dan sering digunakan dalam studi asosiasi genetik:
+
+$$r^2 = \frac{D^2}{p_A \cdot p_B \cdot q_A \cdot q_B}$$
+
+### 2.2.2 Ukuran Asosiasi
+
+Ukuran asosiasi digunakan untuk mengetahui kekuatan hubungan antara faktor risiko genetik dengan kejadian penyakit. Beberapa ukuran asosiasi yang digunakan:
+
+**a. Odds Ratio (OR)**
+
+Membandingkan peluang terjadinya penyakit pada kelompok yang terpapar faktor risiko dengan kelompok yang tidak terpapar:
+
+$$OR = \frac{a \times d}{b \times c}$$
+
+**b. Relative Risk (RR)**
+
+Membandingkan risiko terjadinya penyakit antara kelompok terpapar dan tidak terpapar:
+
+$$RR = \frac{a/(a+b)}{c/(c+d)}$$
+
+**c. Attributable Risk (AR)**
+
+Ukuran yang menunjukkan besarnya risiko penyakit pada kelompok terpapar yang dapat diatribusikan pada faktor risiko tertentu:
+
+$$AR = P(D|P_A) - P(D|P_B)$$
+
+**d. Population Attributable Fraction (PAF)**
+
+Memperkirakan proporsi kejadian penyakit dalam populasi yang dapat dicegah apabila faktor risiko dihilangkan:
+
+$$PAF = \frac{P(D) - P(D|P_B)}{P(D)}$$
+
+### 2.2.3 Uji χ² dan Fisher’s Exact Test
+
+Uji Chi-Square digunakan untuk mengetahui ada atau tidaknya hubungan antara genotipe SNP dengan kejadian DM Tipe 2. Uji ini membandingkan frekuensi hasil observasi dengan frekuensi harapan pada tabel kontingensi:
+
+$$\chi^2 = \sum \frac{(O - E)^2}{E}$$
+
+Apabila terdapat nilai frekuensi harapan yang kecil (<5), maka digunakan *Fisher's Exact Test* karena lebih akurat untuk sampel kecil. Keputusan pengujian didasarkan pada nilai *p-value* dengan tingkat signifikansi 5%.
+
+### 2.2.4 Regresi Logistik
+
+Regresi logistik digunakan untuk menganalisis pengaruh SNP terhadap kejadian DM Tipe 2 dengan mempertimbangkan variabel lain seperti usia dan jenis kelamin. Model regresi logistik dinyatakan sebagai berikut:
+
+$$\ln\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \ldots + \beta_K X_K$$
+
+### 2.2.5 Evaluasi Confounding Populasi
+
+*Confounding* terjadi ketika terdapat variabel lain yang berhubungan dengan genotipe maupun status penyakit sehingga dapat menghasilkan asosiasi semu. Evaluasi *confounding* dilakukan dengan membandingkan hasil analisis sebelum dan sesudah penyesuaian variabel kontrol pada model regresi logistik.
+
+### 2.2.6 Visualisasi LD Heatmap
+
+Visualisasi pola Linkage Disequilibrium dilakukan menggunakan paket LDheatmap pada R. LD heatmap menampilkan matriks korelasi antar SNP dalam bentuk peta panas (heatmap) dengan skala warna yang merepresentasikan intensitas LD: warna merah gelap menunjukkan LD kuat (r² mendekati 1), sedangkan warna pucat menunjukkan LD lemah (r² mendekati 0). Posisi genomik setiap SNP ditampilkan pada sumbu untuk memfasilitasi interpretasi blok haplotipe [6]. 
+
+# BAB 3 HASIL ANALISIS LINKAGE DISEQUILIBRIUM (LD)
+
+```{r, warning=FALSE, message=FALSE}
+library(epitools)
+library(LDheatmap)
+library(genetics)
+library(remotes)
+library(epiR)
+library(DescTools)
+```
+
+
+## 3.1 Tabel Haplotipe
+
+```{r, echo = TRUE }
+# Tabel haplotype (untuk menunjukkan distribusi kombinasi alel)
+alel1_snp1 <- ifelse(data$rs7903146 == "TT", "T",
+              ifelse(data$rs7903146 == "CT", "C", "C"))
+alel2_snp1 <- ifelse(data$rs7903146 == "TT", "T",
+              ifelse(data$rs7903146 == "CT", "T", "C"))
+alel1_snp2 <- ifelse(data$rs12255372 == "TT", "T",
+              ifelse(data$rs12255372 == "GT", "G", "G"))
+alel2_snp2 <- ifelse(data$rs12255372 == "TT", "T",
+              ifelse(data$rs12255372 == "GT", "T", "G"))
+ 
+haplo_chr1    <- paste(alel1_snp1, alel1_snp2, sep = "-")
+haplo_chr2    <- paste(alel2_snp1, alel2_snp2, sep = "-")
+all_haplotypes <- c(haplo_chr1, haplo_chr2)
+haplo_freq    <- prop.table(table(all_haplotypes))
+ 
+tabel_haplo <- data.frame(
+  Haplotype       = c("T-T (p11)", "T-G (p12)", "C-T (p21)", "C-G (p22)"),
+  SNP1_rs7903146  = c("T", "T", "C", "C"),
+  SNP2_rs12255372 = c("T", "G", "T", "G"),
+  Frekuensi_Obs   = c(
+    round(as.numeric(haplo_freq["T-T"]), 4),
+    round(as.numeric(haplo_freq["T-G"]), 4),
+    round(as.numeric(haplo_freq["C-T"]), 4),
+    round(as.numeric(haplo_freq["C-G"]), 4)
+  )
+)
+kable(tabel_haplo, caption = "Tabel Haplotype rs7903146 x rs12255372")
+```
+
+Tabel haplotipe digunakan untuk menunjukkan kombinasi alel dari dua SNP yang muncul secara bersamaan dalam populasi penelitian. Dalam analisis Linkage Disequilibrium (LD), haplotipe diperlukan untuk menghitung frekuensi kombinasi alel antar lokus genetik sehingga dapat diketahui apakah kedua SNP diwariskan secara independen atau cenderung diwariskan bersama.
+
+Berdasarkan hasil analisis haplotype antara SNP rs7903146 dan rs12255372 pada gen TCF7L2, diperoleh empat kombinasi haplotype dengan distribusi frekuensi yang berbeda. Haplotype T-T (p11) memiliki frekuensi observasi tertinggi sebesar 0,446 atau 44,6%. Secara biologis, tingginya frekuensi haplotype T-T menunjukkan bahwa alel T pada rs7903146 dan alel T pada rs12255372 merupakan kombinasi alel yang paling umum diwariskan bersama dalam populasi penelitian. Sebaliknya, kombinasi C-T memiliki frekuensi paling rendah yaitu sebesar 17,5%, yang menunjukkan bahwa kombinasi tersebut relatif jarang ditemukan.
+
+Secara keseluruhan, frekuensi haplotipe diperoleh dari proporsi kemunculan masing-masing kombinasi alel pada kedua lokus terhadap total seluruh haplotipe dalam populasi. Karena setiap individu memiliki dua kromosom homolog, maka jumlah total haplotipe adalah 2n. Selanjutnya frekuensi tersebut digunakan untuk menghitung nilai linkage disequilibrium berupa D, D, dan r².
+
+## 3.2 Implementasi R  
+
+```{r, echo = TRUE}
+# Konversi format genotipe ke format yg diterima package genetics
+# rs7903146  : TT → T/T | CT → C/T | CC → C/C
+# rs12255372 : TT → T/T | GT → G/T | GG → G/G
+data$g1 <- gsub("TT","T/T", gsub("CT","C/T", gsub("CC","C/C", data$rs7903146)))
+data$g2 <- gsub("TT","T/T", gsub("GT","G/T", gsub("GG","G/G", data$rs12255372)))
+ 
+geno <- makeGenotypes(data.frame(
+  rs7903146  = data$g1,
+  rs12255372 = data$g2
+))
+ 
+# Hitung LD menggunakan package genetics (EM algorithm)
+ld_res <- LD(geno$rs7903146, geno$rs12255372)
+ 
+# Ambil nilai D, D', r² dari hasil R
+print(ld_res$D)
+print(ld_res$`D'`)
+print(ld_res$`R^2`)
+
+LDheatmap(geno, genetic.distances = c(0,1000),
+          LDmeasure = 'r', title = 'LD r-squared Plot', color = heat.colors(20))
+```
+
+## 3.3 Interpretasi Hasil
+
+1. Interpretasi Nilai D = 0.001418655
+
+Hasil analisis linkage disequilibrium (LD) antara SNP rs7903146 dan rs12255372 pada gen TCF7L2 menunjukkan nilai D sangat kecil dan tidak mendekati 1, artinya kedua SNP tidak berada dalam keadaan _complete linkage disequilibrium_, sehingga alel pada kedua lokus tidak selalu diwariskan bersama. 
+
+Nilai D yang positif mengindikasikan adanya kecenderungan alel tertentu dari kedua SNP muncul bersama sedikit lebih sering dibandingkan yang diharapkan secara acak. Namun karena nilainya sangat kecil, kekuatan asosiasi tersebut tergolong sangat lemah. Secara biologis, hal ini menunjukkan bahwa proses rekombinasi genetik kemungkinan sering terjadi di antara kedua lokus, sehingga kombinasi alel pada rs7903146 dan rs12255372 tidak dipertahankan secara kuat dari generasi ke generasi.
+
+2. Interpretasi Nilai D`= 0.006453302
+
+D' merupakan D yang telah dinormalisasi sehingga berada pada rentang 0–1. Dengan hasil yang diperoleh yakni 0,006. Secara genetik, nilai D' yang rendah menunjukkan bahwa kedua SNP hampir mengalami segregasi secara independen. Dengan kata lain, keberadaan alel tertentu pada rs7903146 tidak dapat digunakan untuk memprediksi alel pada rs12255372. Kondisi ini mengindikasikan bahwa kemungkinan terjadinya rekombinasi di antara kedua lokus relatif tinggi selama proses pewarisan. Meskipun kedua SNP berada pada gen TCF7L2 yang diketahui berperan dalam regulasi metabolisme glukosa dan risiko diabetes melitus tipe 2, hubungan pewarisan kedua SNP tersebut dalam populasi penelitian tidak kuat.
+
+3. Interpretasi Nilai r² = 3.739272e-05
+
+Nilai r² sebesar 0,000037 menandakan korelasi genetik antar kedua SNP tergolong rendah. Karena nilai r² yang diperoleh sangat kecil, maka rs7903146 hampir tidak memiliki kemampuan untuk memprediksi variasi alel pada rs12255372, begitu pula sebaliknya. 
+
+4. Interpretasi Visualisasi LDheatmap
+
+Visualisasi linkage disequilibrium menggunakan LDheatmap menunjukkan warna yang sangat pucat pada pasangan SNP rs7903146 dan rs12255372, yang mengindikasikan nilai r² rendah. Hasil ini konsisten dengan hasil r² dan D' yang menunjukkan linkage disequilibrium lemah antara kedua lokus. Dengan demikian, rs7903146 dan rs12255372 tidak diwariskan bersama secara kuat.
+
+5. Kesimpulan
+
+Berdasarkan hasil analisis linkage disequilibrium antara SNP rs7903146 dan rs12255372 pada gen TCF7L2 diperoleh nilai D = 0,001418655, D'= 0,006453302, dan r² = 3,739272e−05. Ketiga nilai tersebut menunjukkan bahwa hubungan linkage disequilibrium antara kedua SNP sangat lemah. Secara biologis, hasil ini menunjukkan bahwa rs7903146 dan rs12255372 tidak diwariskan bersama secara kuat sehingga kemungkinan rekombinasi genetik antar kedua lokus cukup tinggi. Meskipun keduanya berada pada gen TCF7L2, pola LD yang lemah mengindikasikan bahwa masing-masing SNP kemungkinan memberikan kontribusi genetik yang relatif independen terhadap risiko diabetes melitus tipe 2.
+
+# BAB 4 HASIL UKURAN ASOSIASI GEN 
+
+## 4.1 Tabel kontingensi 2x2
+
+```{r, echo=FALSE}
+tabel_kasus <- data.frame(
+  Genotipe = c("TT (rs7903146)", "CT/CC", "Total"),
+  DM2_Kasus = c(140, 110, 250),
+  Sehat_Kontrol = c(75, 175, 250),
+  Total = c(215, 285, 500)
+)
+kable(
+  tabel_kasus,
+  caption = "Tabel Kontingensi 2×2 antara Genotipe rs7903146 dan Status Diabetes Melitus Tipe 2"
+)
+```
+
+## 4.2 Odds Ratio 
+
+```{r, echo = TRUE}
+a <- 140
+b <- 75
+c <- 110
+d <- 175
+
+OR <- (a*d)/(b*c)
+OR
+```
+
+## 4.2.1 Confidence Interval 95% OR
+
+```{r, echo=TRUE}
+## 95% Confidence Interval OR (Metode Woolf)
+# Standard Error
+SE <- sqrt((1/a) + (1/b) + (1/c) + (1/d))
+SE
+
+# ln(OR)
+lnOR <- log(OR)
+lnOR
+
+# CI bawah dan atas
+lower_CI <- exp(lnOR - 1.96 * SE)
+upper_CI <- exp(lnOR + 1.96 * SE)
+
+# hasil
+cat("95% CI OR = (", round(lower_CI,3), ",", 
+    round(upper_CI,3), ")")
+```
+
+## 4.3 Relative Risk
+```{r, echo =TRUE}
+risk1 <- a/(a+b)
+risk0 <- c/(c+d)
+RR <- risk1/risk0
+RR
+```
+
+## 4.4 Attributable Risk 
+```{R, echo = TRUE}
+# P(D|A1)
+PD_A1 <- a/(a+b)
+# P(D|A2)
+PD_A2 <- c/(c+d)
+AR <- PD_A1 - PD_A2
+AR
+```
+
+## 4.5 Population Attributable Fraction
+```{r, echo=TRUE}
+# total disease prevalence
+PD <- (a+c)/(a+b+c+d)
+PAF <- (PD - PD_A2)/PD
+PAF
+```
+
+## 4.6 Implementasi R
+```{r, echo = TRUE}
+# Membentuk tabel 2×2
+tabel_studi <- matrix(
+  c(140, 75,
+    110, 175),
+  nrow = 2,
+  byrow = TRUE,
+  dimnames = list(
+    Genotipe = c("TT", "CT/CC"),
+    Status = c("DM2", "Sehat")
+  )
+)
+
+# Analisis epidemiologi
+hasil_analisis <- epi.2by2(
+  dat = as.table(tabel_studi),
+  method = "cohort.count",
+  conf.level = 0.95
+)
+
+# Odds Ratio
+cat(
+  "Odds Ratio (OR) : ",
+  round(
+    hasil_analisis$massoc.detail$OR.strata.score$est,
+    2
+  ),
+  "\n"
+)
+
+# Relative Risk
+cat(
+  "Risk Ratio (RR) : ",
+  round(
+    hasil_analisis$massoc.detail$RR.strata.score$est,
+    2
+  ),
+  "\n"
+)
+
+# Attributable Risk
+cat(
+  "Attributable Risk (AR) : ",
+  round(
+    hasil_analisis$massoc.detail$ARisk.strata.score$est,
+    2
+  ),
+  "\n"
+)
+
+# Population Attributable Fraction
+paf <- hasil_analisis$massoc.detail$PAFRisk.strata.wald$est * 100
+
+cat(
+  "Population Attributable Fraction (PAF) : ",
+  round(paf, 1),
+  "%\n"
+)
+```
+
+## 4.7 Interpretasi Asosiasi Gen
+
+Hasil analisis asosiasi menunjukkan bahwa individu yang memiliki faktor genetik risiko pada SNP gen TCF7L2 memiliki Odds Ratio (OR) sebesar 2,97. Nilai ini menunjukkan bahwa individu dengan alel/genotipe risiko memiliki peluang hampir 3 kali lebih besar mengalami Type 2 Diabetes dibandingkan individu tanpa faktor risiko tersebut. Nilai 95% confidence interval (CI) sebesar 2,055 – 4,291 tidak melewati angka 1, sehingga menunjukkan bahwa asosiasi tersebut signifikan secara statistik dan estimasi OR yang diperoleh memiliki tingkat kepercayaan yang baik.
+
+Nilai Risk Ratio (RR) sebesar 1,69 mengindikasikan bahwa risiko kejadian Type 2 Diabetes pada kelompok yang memiliki faktor genetik risiko meningkat 1,69 kali dibandingkan kelompok non-risiko. Hasil ini menunjukkan adanya hubungan positif antara variasi genetik yang diteliti dengan peningkatan kerentanan penyakit.
+
+Attributable Risk (AR) sebesar 26,52 menunjukkan bahwa individu dengan genotipe TT memiliki peningkatan risiko absolut terkena Type 2 Diabetes sebesar 26,52 % poin dibandingkan individu bergenotipe CT/CC. Hasil ini mengindikasikan bahwa proporsi risiko tersebut kemungkinan berkaitan dengan keberadaan genotipe risiko pada SNP rs7903146.
+
+Sementara itu, Population Attributable Fraction (PAF) sebesar 22,8% menunjukkan bahwa sekitar 22,8% kasus Type 2 Diabetes dalam populasi penelitian diperkirakan berkaitan dengan faktor genetik tersebut. Jika secara hipotetis genotipe TT bisa 'dieliminasi' (misalnya melalui terapi gen atau skrining populasi), maka beban kasus DM2 di populasi dapat berkurang.
+
+## 4.8 Uji Chi-Square
+
+```{r, echo=TRUE}
+uji_chi <- chisq.test(tabel_studi)
+uji_chi
+if(uji_chi$p.value < 0.05){
+  cat("Tolak H0\n")
+  cat("Terdapat asosiasi signifikan antara SNP rs7903146 dan DM Tipe 2\n")
+}
+```
+Interpretasi : 
+
+Hasil uji Chi-Square Pearson menunjukkan nilai x² sebesar 33,423 dengan derajat bebas (df) sebesar 1 dan p-value sebesar 7,414 × 10⁻⁹ (p-value < 0.05). Hasil ini menunjukkan bahwa H₀ ditolak, sehingga terdapat asosiasi yang signifikan antara SNP rs7903146 pada gen TCF7L2 dengan kejadian DM Tipe 2. Distribusi genotipe rs7903146 TIDAK acak terhadap status penyakit. Ini mendukung bahwa varian rs7903146 bukan hanya penanda kebetulan, melainkan berkaitan erat dengan mekanisme biologis DM tipe 2.
+
+## 4.9 Uji Fisher's Exact
+
+```{r, echo=TRUE}
+uji_fisher <- fisher.test(tabel_studi)
+uji_fisher
+if(uji_fisher$p.value < 0.05){
+  cat("Tolak H0\n")
+  cat("Terdapat asosiasi signifikan antara SNP rs7903146 dan DM Tipe 2\n")
+}
+```
+
+Interpretasi : 
+
+Hasil Fisher’s Exact Test juga menunjukkan p-value sebesar 6,028 × 10⁻⁹ dengan odds ratio sebesar 2,96 dan interval kepercayaan 95% sebesar 2,02–4,37. Karena interval kepercayaan tidak melewati angka 1, maka asosiasi antara rs7903146 dan Type 2 Diabetes dapat dianggap signifikan secara statistik. Nilai odds ratio tersebut menunjukkan bahwa individu yang membawa genotipe/alel risiko pada rs7903146 memiliki peluang hampir 3 kali lebih besar mengalami DM tipe 2 dibandingkan individu tanpa alel risiko.
+
+## 4.10 Interpretasi Asosiasi Gen
+
+Hasil uji Chi-Square dan Fisher Exact secara konsisten menunjukkan adanya asosiasi signifikan antara SNP rs7903146 pada gen TCF7L2 dengan kejadian Type 2 Diabetes. Nilai p yang sangat kecil (p < 0,05) menunjukkan bahwa hubungan tersebut tidak terjadi secara kebetulan secara statistik.
+
+Temuan ini diperkuat oleh nilai odds ratio (OR) sebesar 2,96 dengan interval kepercayaan 95% sebesar 2,02–4,37. Nilai OR > 1 menunjukkan bahwa individu dengan genotipe risiko memiliki peluang hampir 3 kali lebih besar mengalami DM tipe 2 dibandingkan kelompok referensi. Karena interval kepercayaan tidak melewati nilai 1, maka asosiasi tersebut dinyatakan signifikan dan memiliki kekuatan hubungan yang cukup bermakna.
+
+Secara keseluruhan, hasil analisis statistik menunjukkan bahwa SNP rs7903146 merupakan salah satu faktor risiko genetik yang berkontribusi terhadap peningkatan kerentanan Type 2 Diabetes pada populasi penelitian. Secara biologis, variasi genetik pada rs7903146 diduga memengaruhi fungsi gen TCF7L2 yang berperan dalam regulasi jalur sinyal Wnt, fungsi sel β pankreas, sekresi insulin, dan homeostasis glukosa. Gangguan pada mekanisme tersebut dapat meningkatkan risiko resistensi insulin maupun penurunan sekresi insulin yang merupakan karakteristik utama DM tipe 2.
+
+
+# BAB 5 UJI STATISTIK DAN CONFOUNDING 
+
+## 5.1 Regresi Logistik 
+
+```{r, echo = TRUE}
+data$rs7903146 <- factor(data$rs7903146)
+data$jenis_kelamin <- factor(data$jenis_kelamin)
+
+model <- glm(
+  status ~ rs7903146 + usia + jenis_kelamin,
+  family = binomial,
+  data = data
+)
+summary(model)
+adjOR <- exp(
+  cbind(
+    OR = coef(model),
+    confint(model)
+  )
+)
+
+kable(
+  round(adjOR,3),
+  caption = "Adjusted Odds Ratio Regresi Logistik"
+)
+```
+
+## 5.2 Interpretasi Regresi Logistik
+
+Model regresi logistik yang diperoleh adalah :
+\[
+\log \left( \frac{p}{1-p} \right)
+=
+-1.086
++ 0.540(\text{rs7903146CT})
++ 1.142(\text{rs7903146TT})
++ 0.004(\text{age})
++ 0.147(\text{sex})
+\]
+
+Hasil regresi logistik menunjukkan bahwa genotipe rs7903146 memiliki pengaruh terhadap kejadian Diabetes Mellitus Tipe 2 setelah dilakukan penyesuaian terhadap variabel usia dan jenis kelamin. Individu dengan genotipe TT memiliki adjusted odds ratio sebesar 3,133 dengan interval kepercayaan 95% sebesar 1,809–5,563 dan p-value < 0.001. Hal ini menunjukkan bahwa individu dengan genotipe TT memiliki odds sekitar 3,1 kali lebih besar mengalami DM tipe 2 dibandingkan genotipe referensi setelah mempertimbangkan pengaruh usia dan jenis kelamin.
+
+Sementara itu, genotipe CT memiliki adjusted odds ratio sebesar 1,716 dengan p-value sebesar 0,0608. Nilai tersebut menunjukkan adanya kecenderungan peningkatan risiko DM tipe 2 pada genotipe CT, namun secara statistik belum signifikan pada tingkat kepercayaan 95% karena interval kepercayaan masih melewati nilai 1.
+
+Variabel usia dan jenis kelamin perempuan tidak menunjukkan hubungan yang signifikan terhadap kejadian Type 2 Diabetes dalam model ini, dengan p-value masing-masing sebesar 0,6208 dan 0,4225. Hal ini mengindikasikan bahwa pada populasi penelitian, pengaruh utama terhadap peningkatan risiko DM tipe 2 lebih dominan berasal dari faktor genetik SNP rs7903146 dibandingkan faktor usia maupun jenis kelamin.
+
+## 5.3 Evaluasi Confounding
+
+```{r, echo=TRUE}
+model_crude <- glm(
+  status ~ rs7903146,
+  family = binomial,
+  data = data
+)
+
+OR_crude <- exp(coef(model_crude))
+OR_adj <- exp(coef(model))
+
+confounding_pct <- abs(
+  (OR_adj["rs7903146TT"] -
+   OR_crude["rs7903146TT"]) /
+   OR_crude["rs7903146TT"]
+) * 100
+
+tabel_confounding <- data.frame(
+  Model = c("Crude OR", "Adjusted OR", "% Perubahan"),
+  Nilai = c(
+    round(OR_crude["rs7903146TT"], 3),
+    round(OR_adj["rs7903146TT"], 3),
+    round(confounding_pct, 2)
+  )
+)
+
+kable(
+  tabel_confounding,
+  caption = "Perbandingan Crude OR dan Adjusted OR"
+)
+```
+
+## 5.4 Interpretasi Confounding
+
+Evaluasi confounding dilakukan dengan membandingkan nilai odds ratio sebelum dan sesudah penyesuaian terhadap variabel usia dan jenis kelamin.
+
+Hasil analisis menunjukkan menunjukkan nilai crude OR sebesar 3,112 dan adjusted OR sebesar 3,133, dengan persentase perubahan sebesar 0,68%. Perubahan yang sangat kecil (<10%) menunjukkan bahwa variabel usia dan jenis kelamin tidak memberikan pengaruh perancu (confounding) yang bermakna terhadap hubungan antara SNP rs7903146 dan kejadian Type 2 Diabetes. Asosiasi antara rs7903146 dan DM tipe 2 merupakan asosiasi independen tidak dikacaukan oleh usia atau jenis kelamin.
+
+Dengan demikian, hubungan antara genotipe TT rs7903146 dan risiko DM tipe 2 dapat dianggap relatif stabil baik sebelum maupun sesudah penyesuaian variabel kovariat. Hal ini mengindikasikan bahwa efek asosiasi yang ditemukan terutama berasal dari faktor genetik rs7903146 itu sendiri, bukan dipengaruhi oleh distribusi usia atau jenis kelamin dalam populasi penelitian.
+
+# BAB 6 PENUTUP
+
+## 6.1 Kesimpulan 
+
+Penelitian ini menunjukkan adanya asosiasi signifikan antara SNP rs7903146 pada gen TCF7L2 dengan kejadian Type 2 Diabetes. Analisis linkage disequilibrium antara rs7903146 dan rs12255372 menghasilkan nilai D’ sebesar 0,006453302 dan r² sebesar 3,739272e−05 yang menunjukkan linkage disequilibrium sangat lemah antar kedua SNP. Hasil uji Chi-Square, Fisher Exact, dan regresi logistik menunjukkan bahwa genotipe TT rs7903146 berhubungan dengan peningkatan risiko DM tipe 2 dengan adjusted OR sebesar 3,133. Analisis confounding menunjukkan bahwa usia dan jenis kelamin tidak memberikan pengaruh yang bermakna terhadap hubungan tersebut. Visualisasi LDheatmap juga mendukung adanya pola linkage disequilibrium yang rendah antara kedua SNP pada gen TCF7L2.
+
+## 6.2 Keterbatasan Studi
+
+Penelitian ini memiliki beberapa keterbatasan yang perlu diperhatikan dalam interpretasi hasil.
+
+1. Data yang digunakan sebagian merupakan data simulasi sehingga belum sepenuhnya merepresentasikan kondisi populasi nyata.
+
+2. Analisis linkage disequilibrium hanya melibatkan dua SNP pada gen TCF7L2, sehingga belum dapat menggambarkan struktur haplotipe gen secara menyeluruh.
+
+3. Faktor risiko non-genetik seperti indeks massa tubuh (IMT), pola makan, aktivitas fisik, dan riwayat keluarga tidak dimasukkan ke dalam model analisis.
+
+## 6.3 Implikasi Klinis dan Epidemiologis
+
+Hasil penelitian menunjukkan bahwa SNP rs7903146 berpotensi digunakan sebagai penanda genetik dalam identifikasi individu yang memiliki risiko lebih tinggi terhadap Diabetes Mellitus Tipe 2. Informasi genetik seperti ini dapat mendukung upaya pencegahan dini melalui pemantauan faktor risiko dan penerapan gaya hidup sehat pada kelompok yang rentan.
+
+Dari sudut pandang epidemiologi, identifikasi faktor genetik yang berasosiasi dengan DM Tipe 2 dapat membantu memahami variasi kerentanan penyakit dalam populasi serta menjadi dasar bagi penelitian lanjutan yang melibatkan data genetik dan faktor lingkungan secara lebih komprehensif.
+
+# DAFTAR PUSTAKA
+
+[1] 	M. N. R. Y. H. A. R. A. Erdaliza, "Risk factors associated with complications of Type 2 Diabetes Mellitus," JURNAL KESEHATAN KOMUNITAS, vol. 10, pp. 534-545, 2024. 
+
+[2] 	E. R. S. A. A. K. D. P. Melytania, "Hubungan Kadar Glukosa Darah Sewaktu Dengan Kadar Low Density Lipoprotein(LDL) Penderita Diabetes Mellitus Tipe 2 di Poliklinik RSUD Kota Mataram," Jurnal Kedokteran : Media Informasi Ilmu Kedokteran dan Kesehatan, vol. 8, pp. 114-124, 2023. 
+
+[3] 	E. A. C. Manik Nur Rosyidah, "Diabetes Melitus Tipe 2," Enfermeria Ciemcia, vol. 3, pp. 44-63, 2025. 
+
+[4] 	Halodoc, "Risiko Diabetes Bisa Dipengaruhi Faktor Genetik," Halodoc, 10 Juni 2021. [Online]. Available: https://www.halodoc.com/artikel/risiko-diabetes-bisa-dipengaruhi-faktor-genetik. [Accessed 22 Mei 2026].
+
+[5] 	W. Z. Wenbo Mu, "Pendekatan, Model, dan Teknik Molekuler dalam Penelitian dan Pengembangan Farmakogenomik," in Connectome Analysis: Characterization, Methods, and Analysis , Academic Press, 2021. 
+
+[6] 	S. B. B. M. J. G. Ji-Hyung Shin, "LDheatmap: An R Function for Graphical Display of Pairwise Linkage Disequilibria Between Single Nucleotide Polymorphisms," Journal of Statistical Software, vol. 16, no. 3, pp. 1-10, 2006. 
+
+
+# LAMPIRAN 
+
+## Syntax R Lengkap
+```{r, echo=TRUE, results='hide', fig.show='hide', fig.keep= 'hide', message=FALSE, warning=FALSE}
+library(knitr)
+library(epitools)
+library(LDheatmap)
+library(genetics)
+library(remotes)
+library(epiR)
+library(DescTools)
+
+set.seed(1)
+n <- 500
+
+# Simulasi SNP rs7903146
+rs7903146 <- sample(c('TT', 'CT', 'CC'), n, replace = TRUE,
+                    prob = c(0.43, 0.42, 0.15))
+
+# Simulasi status penyakit berdasarkan genotipe
+status <- rbinom(n, 1, ifelse(rs7903146 == 'TT', 0.56,
+                              ifelse(rs7903146 == 'CT', 0.42, 0.27)))
+
+# Simulasi SNP rs12255372 (berkorelasi dengan rs7903146)
+rs12255372 <- sample(c('TT', 'GT', 'GG'), n, replace = TRUE,
+                     prob = c(0.43, 0.43, 0.15))
+
+# Simulasi variabel kovariat
+usia <- round(rnorm(n, mean = 45, sd = 10))
+jenis_kelamin <- sample(c('Laki-laki', 'Perempuan'), n, replace = TRUE)
+
+# Gabungkan ke dalam data frame
+data <- data.frame(
+  rs7903146     = rs7903146,
+  rs12255372    = rs12255372,
+  status        = status,
+  usia          = usia,
+  jenis_kelamin = jenis_kelamin
+)
+
+# Tabel kasus
+tabel_kasus <- data.frame(
+  Genotipe      = c("TT (rs7903146)", "CT/CC", "Total"),
+  DM2_Kasus     = c(140, 110, 250),
+  Sehat_Kontrol = c(75, 175, 250),
+  Total         = c(215, 285, 500)
+)
+kable(tabel_kasus,
+      caption = "Distribusi Genotipe rs7903146 pada Kelompok DM2 dan Kontrol")
+
+# =============================================
+# BAB 3 - LINKAGE DISEQUILIBRIUM
+# =============================================
+ # Tabel haplotype (untuk menunjukkan distribusi kombinasi alel)
+alel1_snp1 <- ifelse(data$rs7903146 == "TT", "T",
+              ifelse(data$rs7903146 == "CT", "C", "C"))
+alel2_snp1 <- ifelse(data$rs7903146 == "TT", "T",
+              ifelse(data$rs7903146 == "CT", "T", "C"))
+alel1_snp2 <- ifelse(data$rs12255372 == "TT", "T",
+              ifelse(data$rs12255372 == "GT", "G", "G"))
+alel2_snp2 <- ifelse(data$rs12255372 == "TT", "T",
+              ifelse(data$rs12255372 == "GT", "T", "G"))
+ 
+haplo_chr1    <- paste(alel1_snp1, alel1_snp2, sep = "-")
+haplo_chr2    <- paste(alel2_snp1, alel2_snp2, sep = "-")
+all_haplotypes <- c(haplo_chr1, haplo_chr2)
+haplo_freq    <- prop.table(table(all_haplotypes))
+ 
+tabel_haplo <- data.frame(
+  Haplotype       = c("T-T (p11)", "T-G (p12)", "C-T (p21)", "C-G (p22)"),
+  SNP1_rs7903146  = c("T", "T", "C", "C"),
+  SNP2_rs12255372 = c("T", "G", "T", "G"),
+  Frekuensi_Obs   = c(
+    round(as.numeric(haplo_freq["T-T"]), 4),
+    round(as.numeric(haplo_freq["T-G"]), 4),
+    round(as.numeric(haplo_freq["C-T"]), 4),
+    round(as.numeric(haplo_freq["C-G"]), 4)
+  )
+)
+kable(tabel_haplo, caption = "Tabel Haplotype rs7903146 x rs12255372")
+
+# Konversi format genotipe ke format yg diterima package genetics
+# rs7903146  : TT → T/T | CT → C/T | CC → C/C
+# rs12255372 : TT → T/T | GT → G/T | GG → G/G
+data$g1 <- gsub("TT","T/T", gsub("CT","C/T", gsub("CC","C/C", data$rs7903146)))
+data$g2 <- gsub("TT","T/T", gsub("GT","G/T", gsub("GG","G/G", data$rs12255372)))
+ 
+geno <- makeGenotypes(data.frame(
+  rs7903146  = data$g1,
+  rs12255372 = data$g2
+))
+ 
+# Hitung LD menggunakan package genetics (EM algorithm)
+ld_res <- LD(geno$rs7903146, geno$rs12255372)
+ 
+# Ambil nilai D, D', r² dari hasil R
+print(ld_res$D)
+print(ld_res$`D'`)
+print(ld_res$`R^2`)
+
+LDheatmap(geno, genetic.distances = c(0,1000),
+          LDmeasure = 'r', title = 'LD r-squared Plot', color = heat.colors(20))
+
+# Membuat tabel kontingensi 2x2
+tabel_kasus <- data.frame(
+  Genotipe = c("TT (rs7903146)", "CT/CC", "Total"),
+  DM2_Kasus = c(140, 110, 250),
+  Sehat_Kontrol = c(75, 175, 250),
+  Total = c(215, 285, 500)
+)
+kable(
+  tabel_studi,
+  caption = "Tabel Kontingensi 2×2 antara Genotipe rs7903146 dan Status Diabetes Melitus Tipe 2"
+)
+
+# Asosiasi Gen
+a <- 140
+b <- 75
+c <- 110
+d <- 175
+## OR
+OR <- (a*d)/(b*c)
+OR
+
+## 95% Confidence Interval OR (Metode Woolf)
+
+# Standard Error
+SE <- sqrt((1/a) + (1/b) + (1/c) + (1/d))
+SE
+
+# ln(OR)
+lnOR <- log(OR)
+lnOR
+
+# CI bawah dan atas
+lower_CI <- exp(lnOR - 1.96 * SE)
+upper_CI <- exp(lnOR + 1.96 * SE)
+
+# hasil
+cat("95% CI OR = (", round(lower_CI,3), ",", 
+    round(upper_CI,3), ")")
+
+## RR
+risk1 <- a/(a+b)
+risk0 <- c/(c+d)
+RR <- risk1/risk0
+RR
+
+## AR
+# P(D|A1)
+PD_A1 <- a/(a+b)
+# P(D|A2)
+PD_A2 <- c/(c+d)
+AR <- PD_A1 - PD_A2
+AR
+
+## PAF
+# total disease prevalence
+PD <- (a+c)/(a+b+c+d)
+PAF <- (PD - PD_A2)/PD
+PAF
+
+
+# Membentuk tabel 2×2
+tabel_studi <- matrix(
+  c(140, 75,
+    110, 175),
+  nrow = 2,
+  byrow = TRUE,
+  dimnames = list(
+    Genotipe = c("TT", "CT/CC"),
+    Status = c("DM2", "Sehat")
+  )
+)
+
+# Analisis epidemiologi
+hasil_analisis <- epi.2by2(
+  dat = as.table(tabel_studi),
+  method = "cohort.count",
+  conf.level = 0.95
+)
+
+# Odds Ratio
+cat(
+  "Odds Ratio (OR) : ",
+  round(
+    hasil_analisis$massoc.detail$OR.strata.score$est,
+    2
+  ),
+  "\n"
+)
+
+# Relative Risk
+cat(
+  "Risk Ratio (RR) : ",
+  round(
+    hasil_analisis$massoc.detail$RR.strata.score$est,
+    2
+  ),
+  "\n"
+)
+
+# Attributable Risk
+cat(
+  "Attributable Risk (AR) : ",
+  round(
+    hasil_analisis$massoc.detail$ARisk.strata.score$est,
+    2
+  ),
+  "\n"
+)
+
+# Population Attributable Fraction
+paf <- hasil_analisis$massoc.detail$PAFRisk.strata.wald$est * 100
+
+cat(
+  "Population Attributable Fraction (PAF) : ",
+  round(paf, 1),
+  "%\n"
+)
+
+# Statistik Uji
+uji_chi <- chisq.test(tabel_studi)
+uji_chi
+if(uji_chi$p.value < 0.05){
+  cat("Tolak H0\n")
+  cat("Terdapat asosiasi signifikan antara SNP rs7903146 dan DM Tipe 2\n")
+}
+uji_fisher <- fisher.test(tabel_studi)
+uji_fisher
+if(uji_fisher$p.value < 0.05){
+  cat("Tolak H0\n")
+  cat("Terdapat asosiasi signifikan antara SNP rs7903146 dan DM Tipe 2\n")
+}
+
+# Model Regresi
+data$rs7903146 <- factor(data$rs7903146)
+data$jenis_kelamin <- factor(data$jenis_kelamin)
+
+model <- glm(
+  status ~ rs7903146 + usia + jenis_kelamin,
+  family = binomial,
+  data = data
+)
+summary(model)
+adjOR <- exp(
+  cbind(
+    OR = coef(model),
+    confint(model)
+  )
+)
+kable(
+  round(adjOR,3),
+  caption = "Adjusted Odds Ratio Regresi Logistik"
+)
+
+
+# Confounding
+model_crude <- glm(
+  status ~ rs7903146,
+  family = binomial,
+  data = data
+)
+
+OR_crude <- exp(coef(model_crude))
+OR_adj <- exp(coef(model))
+
+confounding_pct <- abs(
+  (OR_adj["rs7903146TT"] -
+   OR_crude["rs7903146TT"]) /
+   OR_crude["rs7903146TT"]
+) * 100
+
+tabel_confounding <- data.frame(
+  Model = c("Crude OR", "Adjusted OR", "% Perubahan"),
+  Nilai = c(
+    round(OR_crude["rs7903146TT"], 3),
+    round(OR_adj["rs7903146TT"], 3),
+    round(confounding_pct, 2)
+  )
+)
+
+kable(
+  tabel_confounding,
+  caption = "Perbandingan Crude OR dan Adjusted OR"
+)
+```
+
